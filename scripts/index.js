@@ -12,6 +12,7 @@ const dotenv = require('dotenv');
 //const fetch = require('node-fetch');
 const axios = require('axios');
 
+var SqlString = require('sqlstring');
 const mysql = require('mysql2');
 let db_connection;
 
@@ -70,12 +71,12 @@ function update_db(aData){
 	// из каждого объекта с информациекй о клубе формируем запрос UPDATE
 	aData.forEach(el=>{
 		let oData = {};
-		oData.title = el.name;
-		oData.desc = el.description;
-		oData.address = el.address;
-		oData.address_city = el.city?el.city.title || 'Город неизвестен';
+		oData.title = SqlString.escap(el.name);
+		oData.desc = SqlString.escap(el.description);
+		oData.address = SqlString.escap(el.address);
+		oData.address_city = SqlString.escap(el.city?el.city.title || 'Город неизвестен');
 		//oData.date_update = new Date();
-		oData.banner_vertical = el.photo_200;
+		oData.banner_vertical = SqlString.escap(el.photo_200);
 		
 		let sQueryPart = `title='${oData.name}', 
 		desc=${oData.description}, 
