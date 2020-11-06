@@ -1,3 +1,5 @@
 
 node_modules/*
 .env
+_env
+data/vk_data.txt

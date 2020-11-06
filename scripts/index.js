@@ -13,17 +13,19 @@ const dotenv = require('dotenv');
 const axios = require('axios');
 
 
-dotenv.config();
+dotenv.config({ path: '_env' });
 const { VK_APP_KEY } = process.env;
 const vk_api = 'https://api.vk.com/method';
 const sStartPath = __dirname;
+const sVkGroupsSourcePath = path.join(sStartPath, '../data', 'links.txt');
+const sVkGroupsOutputPath = path.join(sStartPath, '../data', 'vk_data.txt');
 //const cp = require('child_process');
 
 //const oPath = "D:/rpg_download";
 
 
 function get_vk_links(){	
-	let filePath = path.join(sStartPath, '../data', 'links.txt');
+	let filePath = sVkGroupsSourcePath;
 	let oFile = fs.readFileSync(filePath, {encoding : 'utf8'});
 	let aVkLinks = oFile.match(/https?:\/\/vk.com\/[a-z0-9_-]+/g);
 	return aVkLinks;
@@ -173,7 +175,7 @@ async function add_groups_addresses(aGroups){
 }
 
 function write_output(aData){
-	let filePath = path.join(sStartPath, '../data', 'vk_data.txt');
+	let filePath = sVkGroupsOutputPath;
 	let sFileData = JSON.stringify(aData, null, '  ') ;//  aData.map(oClubData=> `${oClubData.url}: \r\n ${oClubData.data}`).join('\r\n\r\n------\r\n\r\n')
 	fs.writeFileSync(filePath, sFileData);
 }
