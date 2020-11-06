@@ -1,5 +1,9 @@
 # club_adress_grubber
 
+## Требования 
+Скачать и установить NodeJS под нужную платформу
+https://nodejs.org/ru/download/
+
 ## Установка
 В директории в консоли выполнить команду `npm install`
 
