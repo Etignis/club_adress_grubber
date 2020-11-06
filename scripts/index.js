@@ -12,9 +12,19 @@ const dotenv = require('dotenv');
 //const fetch = require('node-fetch');
 const axios = require('axios');
 
+const mysql = require('mysql2');
+let db_connection;
 
 dotenv.config({ path: '_env' });
-const { VK_APP_KEY } = process.env;
+const { 
+	VK_APP_KEY,
+	DB_DRIVER,
+	DB_HOST,
+	DB_PORT,
+	DB_USERNAME,
+	DB_PASSWORD,
+	DB_NAME
+ } = process.env;
 const vk_api = 'https://api.vk.com/method';
 const sStartPath = __dirname;
 const sVkGroupsSourcePath = path.join(sStartPath, '../data', 'links.txt');
@@ -22,6 +32,92 @@ const sVkGroupsOutputPath = path.join(sStartPath, '../data', 'vk_data.txt');
 //const cp = require('child_process');
 
 //const oPath = "D:/rpg_download";
+
+function start_db_connection(){
+	// create the connection to database
+	db_connection = mysql.createConnection({
+		host: DB_HOST,
+		user: DB_USERNAME,
+		password: DB_PASSWORD,
+		database: DB_NAME
+	});
+}
+
+function get_from_db(){
+	start_db_connection();
+	return new Promise((resolve, reject) => {
+		connection.query(
+		`SELECT 
+			id,
+			url_site
+		FROM 'rpgcrf_clubs'`,
+		function(err, results, fields) {
+				console.log(results); // results contains rows returned by server
+				console.log(fields); // fields contains extra meta data about results, if available
+				
+				if(err) {
+					reject(err);
+				} else {
+					resolve(results);
+				}
+			}
+		})	
+	);
+}
+
+function update_db(aData){
+	let aQueries = [];
+	// из каждого объекта с информациекй о клубе формируем запрос UPDATE
+	aData.forEach(el=>{
+		let oData = {};
+		oData.title = el.name;
+		oData.desc = el.description;
+		oData.address = el.address;
+		oData.address_city = el.city?el.city.title || 'Город неизвестен';
+		//oData.date_update = new Date();
+		oData.banner_vertical = el.photo_200;
+		
+		let sQueryPart = `title='${oData.name}', 
+		desc=${oData.description}, 
+		address=${oData.address}, 
+		address_city=${oData.address_city}, 
+		banner_vertical=${oData.banner_vertical}`
+		
+		let sUpdateQuery =`UPDATE 'rpgcrf_clubs'
+		SET 
+			${sQueryPart}
+		WHERE  url_site = 'https://vk.com/${screen_name}'`;
+		
+		aQueries.push(sUpdateQuery)
+	});
+	
+	return new Promise((resolve, reject) => {
+		connection.query(
+		aQueries.join(';'), // Объединяем все запросы в один
+		function(err, results, fields) {
+				console.log(results); // results contains rows returned by server
+				console.log(fields); // fields contains extra meta data about results, if available
+				
+				stop_db_connection();
+				
+				if(err) {
+					reject(err);
+				} else {
+					resolve(results);
+				}
+			}
+		})	
+	);
+}
+
+function stop_db_connection(){
+	connection.end(function(err) {
+		if (err) {
+			return console.log("Ошибка: " + err.message);
+		}
+		console.log("Подключение закрыто");
+	});
+}
 
 
 function get_vk_links(){	
@@ -31,39 +127,20 @@ function get_vk_links(){
 	return aVkLinks;
 }
 
+// парсинг без API
 async function get_vk_group_data(sGroupURL){
 	return new Promise((resolve, reject)=>{
 		axios.get(sGroupURL)
 		.then(function (response) {
-			// handle success
-			//console.log(response);
-			let sHtml = response;
-			//console.log('sHtml', sHtml);
-			//const $ = cheerio.load(sHtml.data);
+			
 			const dom = new JSDOM(sHtml.data);
 			let aInfo = [];
-			//console.log(dom.window.document.querySelector(".page_description").textContent);
 			
 			dom.window.document.querySelectorAll('.pinfo_row').forEach(sRaw=>{
-				// if(/<dt>Описание:</dt>/.test(sRaw)) {
-					// описание 
-					
-				// }
 				
 				aInfo.push(sRaw.textContent);
 			});
 			
-			// const sInfo = dom.window.document.querySelector('.page_description').text();
-			// const sAdress = dom.window.document.querySelector('.address').text();
-			// const sSite = dom.window.document.querySelector('.site').text();
-			
-			// const oData = {
-				// info: sInfo,
-				// adress: sAdress,
-				// site: sSite
-			// };
-			
-			//console.dir(aInfo);
 			let sClubInfo = aInfo.join('\r\n');
 			let oClubInfo = {
 				url: sGroupURL,
@@ -96,7 +173,7 @@ async function get_vk_data(aLinks){
 	return aData;
 }
 
-
+// Формирование запросов к API
 async function _vkAPI(sMethod, oParams){
 	let aParams=[
 		`access_token=${VK_APP_KEY}`,
@@ -181,12 +258,12 @@ function write_output(aData){
 }
 
 async function  main() {
-  let aVkLinks = get_vk_links();
-	//let aVkData = await get_vk_data(aVkLinks);
+  // let aVkLinks = get_vk_links(); // из файла
+	let aVkLinks = await get_from_db(); // из БД
 	let aVkData = await get_groups_data_by_api(aVkLinks);
 	aVkData = await add_groups_addresses(aVkData);
-	//console.dir (aVkData);
-	write_output(aVkData);
+	//write_output(aVkData); // в файл
+	update_db(aVkData);
 }
 
 main();
