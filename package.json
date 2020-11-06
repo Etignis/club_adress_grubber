@@ -21,6 +21,7 @@
   "homepage": "https://github.com/Etignis/club_adress_grubber#readme",
   "dependencies": {
     "axios": "^0.21.0",
+    "dotenv": "^8.2.0",
     "jsdom": "^16.4.0"
   }
 }
